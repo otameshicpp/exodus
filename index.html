@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <!-- <script src="jquery-3.5.1.min.js"></script> -->
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.js"></script>
+    <!-- CSS -->
+    <link rel="stylesheet" href="./style.css" />
+    <!-- JavaScript -->
+    <script src="./jsQR.js" defer></script>
+    <!-- <script src="./main.js" defer></script> -->
+
+    <title>CG-exodus</title>
+    <style>
+
+    </style>
+</head>
+
+<body>
+    <div class="logo_fadein">
+        <p><img src="logo.png" alt=""></p>
+    </div>
+    <div id="wrapper">
+        <div id="msg">カメラにアクセスできません</div>
+        <canvas id="canvas"></canvas>
+    </div>
+    <div id="modelwrapper">
+
+    </div>
+
+</body>
+<script type="module">
+    $(function () {
+        setTimeout(function () {
+            $('.logo_fadein p').fadeIn(1000);
+        }, 500);
+        setTimeout(function () {
+            $('.logo_fadein').fadeOut(1000);
+        }, 2500);
+    });
+    // Import the functions you need from the SDKs you need
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.13.0/firebase-app.js";
+    import { getFirestore, collection, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/9.13.0/firebase-firestore.js";
+    // TODO: Add SDKs for Firebase products that you want to use
+    // https://firebase.google.com/docs/web/setup#available-libraries
+    var qrid = 0
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+        apiKey: "AIzaSyAqtYP7JNso6UEr2w3eZpZ3PobdMOAZCLs",
+        authDomain: "exodus-208c7.firebaseapp.com",
+        projectId: "exodus-208c7",
+        storageBucket: "exodus-208c7.appspot.com",
+        messagingSenderId: "783511782502",
+        appId: "1:783511782502:web:1d238cc0558eda771559a7"
+    };
+
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const citiesRef = collection(db, "users");
+    async function callerFun(qrid) {
+        const docRef = doc(db, "users", String(qrid));
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+            console.log("Document data:", docSnap.data());
+            let wrp = document.getElementById('modelwrapper');
+            wrp.innerHTML = '<model-viewer ar alt="car" id="modellook" src="' + docSnap.data()["url"] + '" ios-src=' + docSnap.data()["url_ar"] + ' style = "width:60vw;height:60vh;display: block; margin: auto;z-index: inherit;" background-color="#202124" shadow-intensity="0.7" camera-controls interaction-prompt="auto" auto-rotate ar magic-leap> </model-viewer>'
+        } else {
+            // doc.data() will be undefined in this case
+            document.getElementById("msg").innerText = "データが見つかりません";
+            console.log("No such document!");
+        }
+    }
+    window.onload = (e) => {
+        var number = -1
+        let video = document.createElement("video");
+        let canvas = document.getElementById("canvas");
+        let ctx = canvas.getContext("2d");
+        let msg = document.getElementById("msg");
+
+        const userMedia = { video: { facingMode: "environment" } };
+        navigator.mediaDevices.getUserMedia(userMedia).then((stream) => {
+            video.srcObject = stream;
+            video.setAttribute("playsinline", true);
+            video.play();
+            startTick();
+        });
+
+        function startTick() {
+            msg.innerText = "Loading video...";
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.height = video.videoHeight;
+                canvas.width = video.videoWidth;
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                let img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                let code = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+                if (code) {
+                    drawRect(code.location);// Rect
+                    msg.innerText = code.data;// Data
+                    qrid = code.data;
+                    console.log(qrid);
+                    callerFun(qrid);
+                    document.getElementById('wrapper').innerHTML = "";
+                    return
+                } else {
+                    msg.innerText = "Detecting QR-Code...";
+                }
+            }
+            setTimeout(startTick, 250);
+        }
+
+        function drawRect(location) {
+            drawLine(location.topLeftCorner, location.topRightCorner);
+            drawLine(location.topRightCorner, location.bottomRightCorner);
+            drawLine(location.bottomRightCorner, location.bottomLeftCorner);
+            drawLine(location.bottomLeftCorner, location.topLeftCorner);
+        }
+
+        function drawLine(begin, end) {
+            ctx.lineWidth = 4;
+            ctx.strokeStyle = "#FF3B58";
+            ctx.beginPath();
+            ctx.moveTo(begin.x, begin.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+        }
+
+    }
+// このあたりにこれから掲載するサンプルコードなどを記述。
+</script>
+
+</html>

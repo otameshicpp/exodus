@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <!-- CSS -->
+    <link rel="stylesheet" href="./style.css" />
+    <!-- JavaScript -->
+    <script src="./jsQR.js" defer></script>
+    <!-- <script src="./main.js" defer></script> -->
+
+    <title>CG-exodus</title>
+    <style>
+
+    </style>
+</head>
+
+<body>
+    <div id="wrapper">
+        <div id="msg">Unable to access video stream.</div>
+        <canvas id="canvas"></canvas>
+    </div>
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.12.1/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/9.12.1/firebase-analytics.js";
+        import { getDatabase, ref, set, onValue, serverTimestamp, query, orderByChild, startAt, endAt } from "https://www.gstatic.com/firebasejs/9.12.1/firebase-database.js";
+        // TODO: Add SDKs for Firebase products that you want to use
+        // https://firebase.google.com/docs/web/setup#available-libraries
+
+        // Your web app's Firebase configuration
+        // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+        const firebaseConfig = {
+            apiKey: "AIzaSyBa1I_yoCG9VGAXykbj5Y8ob4qv5hO6dps",
+            authDomain: "cgken-sample.firebaseapp.com",
+            databaseURL: "https://cgken-sample-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "cgken-sample",
+            storageBucket: "cgken-sample.appspot.com",
+            messagingSenderId: "674592302795",
+            appId: "1:674592302795:web:d473318fe180939d6e5d4e",
+            measurementId: "G-PQQKJ0ZW48"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const db = getDatabase();
+        // const ref = db.ref("coords");
+        var dbref = ref(db, "exodust");
+        var len = 0;
+        var qrid = 0
+
+        function testAsync(number) {
+            return new Promise((resolve, reject) => {
+                //here our function should be implemented 
+
+                setTimeout(() => {
+                    console.log("Hello from inside the testAsync function");
+                    const i = len + 1;
+                    console.log(number);
+                    console.log(i);
+                    
+                    const user_info = {
+                        id: number,
+                        name: "soa",
+                        url: "https://cg-cgc.com/",
+                        ar_url: "https://google.com",
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp()
+                    };
+                    set(ref(db, "exodust/user" + i),
+                        user_info
+                    );
+                    onValue(dbref, (snapshot) => {
+                        const data = snapshot.val();
+                        console.log(data);
+                    });
+                    resolve();
+                }, 5000
+                );
+            });
+        }
+
+        async function callerFun(number) {
+            onValue(dbref, function (snapshot) {
+                if(snapshot.val()){
+                len = Object.keys(snapshot.val()).length;
+                console.log(len);
+                }else{
+                    len = 0;
+                }
+            });
+            console.log(number);
+            await testAsync(number);
+            console.log("After waiting");
+        }
+        // callerFun();
+
+        const soas = query(dbref, orderByChild("name"), startAt("soa"), endAt("soa"));
+        onValue(soas, function (snapshot) {
+            console.log(snapshot.val());
+        }, {
+            onlyOnce: true
+        })
+
+
+
+
+        window.onload = (e) => {
+
+            var number = -1
+            let video = document.createElement("video");
+            let canvas = document.getElementById("canvas");
+            let ctx = canvas.getContext("2d");
+            let msg = document.getElementById("msg");
+
+            const userMedia = { video: { facingMode: "environment" } };
+            navigator.mediaDevices.getUserMedia(userMedia).then((stream) => {
+                video.srcObject = stream;
+                video.setAttribute("playsinline", true);
+                video.play();
+                startTick();
+            });
+
+            function startTick() {
+                msg.innerText = "Loading video...";
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    canvas.height = video.videoHeight;
+                    canvas.width = video.videoWidth;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    let img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    let code = jsQR(img.data, img.width, img.height, { inversionAttempts: "dontInvert" });
+                    if (code) {
+                        drawRect(code.location);// Rect
+                        msg.innerText = code.data;// Data
+                        qrid = code.data;
+                        console.log(qrid);
+                        callerFun(qrid);
+                    } else {
+                        msg.innerText = "Detecting QR-Code...";
+                    }
+                }
+                setTimeout(startTick, 250);
+            }
+
+            function drawRect(location) {
+                drawLine(location.topLeftCorner, location.topRightCorner);
+                drawLine(location.topRightCorner, location.bottomRightCorner);
+                drawLine(location.bottomRightCorner, location.bottomLeftCorner);
+                drawLine(location.bottomLeftCorner, location.topLeftCorner);
+            }
+
+            function drawLine(begin, end) {
+                ctx.lineWidth = 4;
+                ctx.strokeStyle = "#FF3B58";
+                ctx.beginPath();
+                ctx.moveTo(begin.x, begin.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.stroke();
+            }
+        }
+
+
+    </script>
+</body>
+
+</html>
