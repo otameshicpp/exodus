@@ -29,7 +29,10 @@
         <canvas id="canvas"></canvas>
     </div>
     <div id="modelwrapper">
-
+        <!-- <model-viewer ar alt="car" id="modellook"
+            src="https://res.cloudinary.com/dcpmqkua9/image/upload/v1667025687/y00te469emca5bbtzb2q.glb"
+            style="width:60vw;height:60vh;display: block; margin: auto;z-index: inherit;" background-color="#202124"
+            shadow-intensity="0.7" camera-controls interaction-prompt="auto" auto-rotate ar magic-leap> </model-viewer> -->
     </div>
 
 </body>
@@ -62,19 +65,55 @@
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
     const citiesRef = collection(db, "users");
+    var memo;
     async function callerFun(qrid) {
         const docRef = doc(db, "users", String(qrid));
         const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-            console.log("Document data:", docSnap.data());
-            let wrp = document.getElementById('modelwrapper');
-            wrp.innerHTML = '<model-viewer ar alt="car" id="modellook" src="' + docSnap.data()["url"] + '" ios-src=' + docSnap.data()["url_ar"] + ' style = "width:60vw;height:60vh;display: block; margin: auto;z-index: inherit;" background-color="#202124" shadow-intensity="0.7" camera-controls interaction-prompt="auto" auto-rotate ar magic-leap> </model-viewer>'
-        } else {
+        if (!docSnap.exists()) {
             // doc.data() will be undefined in this case
             document.getElementById("msg").innerText = "データが見つかりません";
             console.log("No such document!");
+            return
+        }
+        if ("url_ar" in docSnap) {
+            let wrp = document.getElementById('modelwrapper');
+            wrp.innerHTML = '<model-viewer ar alt="car" id="modellook" src="' + docSnap.data()["url"] + '" ios-src=' + docSnap.data()["url_ar"] + ' style = "width:60vw;height:60vh;display: block; margin: auto;z-index: inherit;" background-color="#202124" shadow-intensity="0.7" camera-controls interaction-prompt="auto" auto-rotate ar magic-leap> </model-viewer>'
+
+            let tracks = memo.srcObject.getTracks();
+            tracks.forEach(track => {
+                track.stop();
+            });
+
+            memo.srcObject = null;
+        } else {
+            // console.log("hoge")
+            let wrp = document.getElementById('modelwrapper');
+            wrp.innerHTML = '<model-viewer ar alt="car" id="modellook" src="https://res.cloudinary.com/dcpmqkua9/image/upload/v1667054315/jimny_white_w44dwx.glb" ios-src=' + docSnap.data()["usdz"] + ' style = "width:60vw;height:60vh;display: block; margin: auto;z-index: inherit;" background-color="#202124" shadow-intensity="0.7" camera-controls interaction-prompt="auto" auto-rotate ar magic-leap> </model-viewer>'
+            let tracks = memo.srcObject.getTracks();
+            tracks.forEach(track => {
+                track.stop();
+            });
+
+            memo.srcObject = null;
+            const modelViewerTexture = document.querySelector("model-viewer")
+            modelViewerTexture.addEventListener("load", () => {
+                const material = document.querySelector("model-viewer").model.materials[0];
+                const material2 = document.querySelector("model-viewer").model.materials[1];
+                const createAndApplyTexture = async (sideURL, frontURL) => {
+                    const texture = await modelViewerTexture.createTexture(docSnap.data()["sideURL"]);
+                    material.pbrMetallicRoughness["baseColorTexture"].setTexture(texture);
+                    const texture2 = await modelViewerTexture.createTexture(docSnap.data()["frontURL"]);
+                    material2.pbrMetallicRoughness["baseColorTexture"].setTexture(texture2);
+                }
+                createAndApplyTexture();
+            });
+            tracks.forEach(track => {
+                track.stop();
+            });
+            memo.srcObject = null;
         }
     }
+
     window.onload = (e) => {
         var number = -1
         let video = document.createElement("video");
@@ -105,6 +144,7 @@
                     console.log(qrid);
                     callerFun(qrid);
                     document.getElementById('wrapper').innerHTML = "";
+                    memo = video
                     return
                 } else {
                     msg.innerText = "Detecting QR-Code...";
